@@ -1,10 +1,10 @@
-# Mobile::Ads::MoJiva.pm version 0.1.0
+# Mobile::Ads::RingRingMedia.pm version 0.1.0
 #
 # Copyright (c) 2008 Thanos Chatziathanassioy <tchatzi@arx.net>. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
-package Mobile::Ads::MoJiva;
+package Mobile::Ads::RingRingMedia;
 local $^W;
 require 'Exporter.pm';
 use vars qw(@ISA @EXPORT @EXPORT_OK);
@@ -12,8 +12,8 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw();   #&new);
 @EXPORT_OK = qw();
 
-$Mobile::Ads::MoJiva::VERSION='0.1.0';
-$Mobile::Ads::MoJiva::ver=$Mobile::Ads::MoJiva::VERSION;
+$Mobile::Ads::RingRingMedia::VERSION='0.1.0';
+$Mobile::Ads::RingRingMedia::ver=$Mobile::Ads::RingRingMedia::VERSION;
 
 use strict 'vars';
 use Carp();
@@ -22,39 +22,30 @@ use Digest::MD5 qw();
 
 =head1 NAME
 
-Mobile::Ads::MoJiva - module to serve MoJiva ads
+Mobile::Ads::RingRingMedia - module to serve RingRingMedia ads
 
 Version 0.1.0
 
 =head1 SYNOPSIS
 
- use Mobile::Ads::MoJiva;
- $ad = new Mobile::Ads::MoJiva
- ($text,$link,$image) = $ad->get_mojiva_ad({
-				site	=> 'MoJiva site code',
+ use Mobile::Ads::RingRingMedia;
+ $ad = new Mobile::Ads::RingRingMedia
+ ($text,$link,$image) = $ad->get_ringringmedia_ad({
+				site	=> 'RingRingMedia site code',
  				remote	=> $ENV{'HTTP_USER_AGENT'},
  				address	=> $ENV{'REMOTE_ADDR'},
  				text	=> 'default ad text',
  				link	=> 'default ad link',
  				test	=> 'set this if this is a test ad',
- 				zone	=> 'ad zone',
  				});
  
 =head1 DESCRIPTION
 
-C<Mobile::Ads::MoJiva> provides an object oriented interface to serve advertisements
-from AdMob in mobile sites.
-This is just a slightly altered version of the perl code found on AdMob's site.
+C<Mobile::Ads::RingRingMedia> provides an object oriented interface to serve advertisements
+from RingRingMedia in mobile sites.
+This is just a slightly altered version of the php code found on RingRingMedia's site.
 
-=head1 new Mobile::Ads::MoJiva
-
-=over 4
-
-=item [$parent]
-
-To reuse Mobile::Ads in multiple (subsequent) ad requests, you can pass a C<Mobile::Ads>
-reference here. Instead of creating a new Mobile::Ads object, we will use the one you
-pass instead. This might save a little C<LWP::UserAgent> creation/destruction time.
+=head1 new Mobile::Ads::RingRingMedia
 
 =head2 Parameters/Properties
 
@@ -62,7 +53,7 @@ pass instead. This might save a little C<LWP::UserAgent> creation/destruction ti
 
 =item site
 
-C<>=> MoJiva site code, delivered by them. Something in the form off ``123''
+C<>=> RingRingMedia site code, delivered by them. Something in the form off ``a1471c9db1c2d27''
 
 =item remote
 
@@ -106,15 +97,18 @@ sub new {
 	return $self;
 }
 
-*get_ad = \&get_mojiva_ad;
+*get_ad = \&get_ringringmedia_ad;
 
-sub get_mojiva_ad {
+sub get_ringringmedia_ad {
 	my $self = shift;
 	
-	my $mojiva_endpoint = "http://ads.mojiva.com/ad";
+	my $rrmedia_version = "2.7.90";
+	my $rrmedia_endpoint = 'http://iam.ringringmedia.com/index.php';
+	#my $rrmedia_endpoint = 'http://preiam.ringringmedia.com/index.php';
+	my $encoding = 'UTF-8';
 	
-	my ($site,$test,$remote,$address,$uri,$markup,$text,$link,$key,$count,$border,$header,$bgcolor,$textcol,$linkcol,$adtype,$zone) = 
-			('','','','','','','','','','','','','','','','','');
+	my ($site,$test,$remote,$address,$uri,$markup,$text,$link,$postal_code,$area_code,$coordinates,$dob,$gender,$keywords,$search) = 
+			('','','','','','','','','','','','','','','','');
 	
 	if (ref $_[0] eq 'HASH') {
 		$site	 = $_[0]->{'site'} || $self->{'site'};
@@ -122,21 +116,19 @@ sub get_mojiva_ad {
 		$remote	 = $_[0]->{'remote'} || $ENV{'HTTP_USER_AGENT'};
 		$address = $_[0]->{'address'} || $ENV{'REMOTE_ADDR'};
 		$uri	 = $_[0]->{'uri'} || 'http://'.$ENV{'HTTP_HOST'}.$ENV{'REQUEST_URI'};
+		$markup	 = $_[0]->{'markup'} || 'xml';
 		$text	 = $_[0]->{'text'} || $self->{'text'} || '';
 		$link	 = $_[0]->{'link'} || $self->{'link'} || '';
-		#alterations from admob start here..
-		$adtype	 = $_[0]->{'adtype'} || $self->{'adtype'} || 3;
-		$key	 = $_[0]->{'key'}  || $self->{'key'} || 1;
-		$zone	 = $_[0]->{'zone'}  || $self->{'zone'} || 143;
-		$count	 = $_[0]->{'count'} || $self->{'count'} || 1;
-		$border	 = $_[0]->{'border'} || $self->{'border'} || '#000000';
-		$header	 = $_[0]->{'header'} || $self->{'header'} || '#cccccc';
-		$bgcolor = $_[0]->{'bgcolor'} || $self->{'bgcolor'} || '#eeeeee';
-		$textcol = $_[0]->{'textcol'} || $self->{'textcol'} || '#000000';
-		$linkcol = $_[0]->{'linkcol'} || $self->{'linkcol'} || '#ff0000';
+		$postal_code = $_[0]->{'postal_code'} || '';
+		$area_code 	 = $_[0]->{'area_code'} || '';
+		$coordinates = $_[0]->{'coordinates'} || '';
+		$keywords	 = $_[0]->{'keywords'} || '';
+		$search	 = $_[0]->{'search'} || '';
+		$dob	 = $_[0]->{'dob'} || '';
+		$gender	 = $_[0]->{'gender'} || '';
 	}
 	else {
-		($site,$test,$remote,$address,$uri,$markup,$text,$link,$key,$count,$border,$header,$bgcolor,$textcol,$linkcol,$adtype,$zone) = @_;
+		($site,$test,$remote,$address,$uri,$markup,$text,$link,$postal_code,$area_code,$coordinates,$dob,$gender,$keywords,$search) = @_;
 	}
 	
 	$site	 ||= $self->{'site'};
@@ -144,44 +136,58 @@ sub get_mojiva_ad {
 	$address ||= $ENV{'REMOTE_ADDR'};
 	$text ||= $self->{'text'};
 	$link ||= $self->{'link'};
-		
+	$markup	||= 'xml';
+	
 	Carp::croak("cant serve ads without site\n") unless ($site);
 	Carp::croak("cant serve ads without remote user agent\n") unless ($remote);
 	Carp::croak("cant serve ads without remote address\n") unless ($address);
 	
-	my $mojiva_post = {
-						'site'			=> $site,
-						'ua'			=> $remote,
-						'ip'			=> $address,
-						'url'			=> $uri,
-						'zone'			=> $zone, #is 143 constant ? i'd venture to guess not
-						'adstype'		=> $adtype, #could also use 1 for text or 2 for image only (3==text+image)
-						'key'			=> $key, 
-        				'count'			=> $count,
-        				'paramBORDER'	=> $border, # ads border color
-				        'paramHEADER'	=> $header, # header color
-				        'paramBG'		=> $bgcolor, # background color
-				        'paramTEXT'		=> $textcol, # text color
-				        'paramLINK'		=> $linkcol # url color
+	my $rrmedia_post = {
+						'pid'	=> $site,
+						'ua'	=> $remote,
+						'rt'	=> 'ar',
+						'ira'	=> $address,
+						'au'	=> $uri,
+						's'		=> '', #still haven't figured out what this is
+						'e'		=> $encoding, 
+						'mu'	=> $markup,
+						'pv'	=> $rrmedia_version,
+						'pc'	=> $postal_code,
+						'rac'	=> $area_code,
+						'rco'	=> $coordinates,
+						'rdb'	=> $dob,
+						'rg'	=> $gender,
+						't'		=> $keywords,
+						'mo'	=> 'live',
+						'uniq'	=> '',
 					};
 	
-	#test ads need just find POSTs ``m'' field.
+	#stuff the rest of the $ENV in $rrmedia_post
+	foreach (keys(%ENV)) {
+		if ( length($_) > 5 && $_ =~ m|^HTTP_| ) {
+			$rrmedia_post->{"AR_".$_} = $ENV{$_};
+		}
+	}
+	
+	#alter req to ``mo=test'' if testing..
 	if ($test eq 'test') {
-		$mojiva_post->{'test'} = '1';
+		$rrmedia_post->{'mo'} = 'test';
 	}
 	
 	#do the POST
 	my $res;
 	#through $self->{parent} prefrably...
 	eval q[$res = $self->{'parent'}->get_ad({
-												url		=> $mojiva_endpoint,
+												url		=> $rrmedia_endpoint,
 												method	=> 'POST',
-												params	=> $mojiva_post
+												params	=> $rrmedia_post
 											});];
 	if ($@) {
+		#warn "oops: $@ \n";
 		return ($text,$link);
 	}
 	else {
+		#warn "response: $res \n";
 		my $ret = $self->parse($res,$text,$link);
 		if (wantarray) {
 			return ($ret->{'text'},$ret->{'link'},$ret->{'image'});
@@ -198,14 +204,13 @@ sub parse {
 	my ($toparse,$text,$link) = @_;
 	my $ret = { };
 	
-	$toparse =~ m|\<a.+?href=[\"\']([^\'\"]+)[\'\"]|s and $ret->{'link'} = $1;
-	$toparse =~ m|\<img.+?src=[\"\']([^\'\"]+)[\'\"]|s and $ret->{'image'} = $1;
-	$toparse =~ m|\>([^\<\>]+?)\</a\>|s and $ret->{'text'} = $1;
+	$toparse =~ m|\<clickUrl\>(.+?)\</clickUrl\>|s and $ret->{'link'} = $1;
+	$toparse =~ m|\<text\>(.+?)\</text\>|s and $ret->{'text'} = $1;
+	$toparse =~ m|\<imageUrl\>(.+?)\</imageUrl\>|s and $ret->{'text'} = $1;
 	
 	#we need at least link and text to exist...
-	if ($ret->{'link'} && ($ret->{'text'} || $ret->{'image'}) ) {
+	if ($ret->{'link'} && $ret->{'text'}) {
 		$ret->{'image'} ||= '';
-		$ret->{'text'}  ||= '';
 	}
 	else {
 		$ret->{'link'} = $link;
@@ -226,7 +231,7 @@ sub parse {
 
 =over 4
 
-=item get_mojiva_ad
+=item get_ringringmedia_ad
 
 C<>=> Does the actual fetching of the ad for the site given. Refer to new for details
 Returns a list ($text_for_ad,$link_for_ad) value in list context or an 

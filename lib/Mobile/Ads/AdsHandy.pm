@@ -1,10 +1,10 @@
-# Mobile::Ads::Decktrade.pm version 0.1.3
+# Mobile::Ads::AdsHandy.pm version 0.1.0
 #
 # Copyright (c) 2008 Thanos Chatziathanassioy <tchatzi@arx.net>. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
-package Mobile::Ads::Decktrade;
+package Mobile::Ads::AdsHandy;
 local $^W;
 require 'Exporter.pm';
 use vars qw(@ISA @EXPORT @EXPORT_OK);
@@ -12,8 +12,8 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw();   #&new);
 @EXPORT_OK = qw();
 
-$Mobile::Ads::Decktrade::VERSION='0.1.3';
-$Mobile::Ads::Decktrade::ver=$Mobile::Ads::Decktrade::VERSION;
+$Mobile::Ads::AdsHandy::VERSION='0.1.0';
+$Mobile::Ads::AdsHandy::ver=$Mobile::Ads::AdsHandy::VERSION;
 
 use strict 'vars';
 use Carp();
@@ -21,28 +21,31 @@ use Mobile::Ads();
 
 =head1 NAME
 
-Mobile::Ads::Decktrade - module to serve Decktrade ads
+Mobile::Ads::AdsHandy - module to serve AdsHandy ads
 
-Version 0.1.3
+Version 0.1.0
 
 =head1 SYNOPSIS
 
- use Mobile::Ads::Decktrade;
- $ad = new Mobile::Ads::Decktrade
- ($text,$link,$image) = $ad->get_Decktrade_ad({
-				site	=> 'Ads.gr site code',
+ use Mobile::Ads::AdsHandy([$parent]);
+ $ad = new Mobile::Ads::AdsHandy
+ ($text,$link,$image) = $ad->get_zestadz_ad({
+				site	=> 'AdMob site code',
  				remote	=> $ENV{'HTTP_USER_AGENT'},
  				address	=> $ENV{'REMOTE_ADDR'},
  				text	=> 'default ad text',
  				link	=> 'default ad link',
+ 				mode	=> 'set this if this is a test ad',
  				});
  
 =head1 DESCRIPTION
 
-C<Mobile::Ads::Decktrade> provides an object oriented interface to serve advertisements
-from Decktrade.com in mobile sites.
+C<Mobile::Ads::AdsHandy> provides an object oriented interface to serve advertisements
+from AdsHandy in mobile sites.
+This was based on C<Mobile::Ads::Zestadz> (since they share most structure) and Perl
+code on their site
 
-=head1 new Mobile::Ads::Decktrade
+=head1 new Mobile::Ads::AdsHandy
 
 =over 4
 
@@ -58,7 +61,7 @@ pass instead. This might save a little C<LWP::UserAgent> creation/destruction ti
 
 =item site
 
-C<>=> Decktrade site code, delivered by them. Something in the form off ``1234'' (they call it ``dt_siteid'')
+C<>=> AdsHandy site code, delivered by them (it is the ``s='' parameter in the URI)
 
 =item remote
 
@@ -102,33 +105,44 @@ sub new {
 	return $self;
 }
 
-*get_ad = \&get_decktrade_ad;
+*get_ad = \&get_adshandy_ad;
 
-sub get_decktrade_ad {
+sub get_adshandy_ad {
 	my $self = shift;
 	
-	my ($site,$remote,$address,$text,$link) = ('','','','','','');
+	my ($site,$remote,$address,$lang,$mode,$text,$link) = ('','','','','','');
 	if (ref $_[0] eq 'HASH') {
 		$site = $_[0]->{'site'} || $self->{'site'};
 		$remote  = $_[0]->{'remote'};
 		$address = $_[0]->{'address'};
+		$lang = $_[0]->{'lang'};
+		$mode = $_[0]->{'mode'};
 		$text = $_[0]->{'text'};
 		$link = $_[0]->{'link'};
 	}
 	else {
-		($site,$remote,$address,$text,$link) = @_;
+		($site,$remote,$address,$lang,$mode,$text,$link) = @_;
 	}
 	
 	$site	 ||= $self->{'site'};
 	$remote	 ||= $ENV{'HTTP_USER_AGENT'};
 	$address ||= $ENV{'REMOTE_ADDR'};
+
+	if (!$lang && $ENV{'HTTP_ACCEPT_LANGUAGE'} && length($ENV{'HTTP_ACCEPT_LANGUAGE'}) > 1) {
+		$lang = lc(substr($ENV{'HTTP_ACCEPT_LANGUAGE'},0,2));
+		$lang =~ s/[^a-z]//g;
+	}
+	elsif (!$lang) {
+		$lang = "en";
+	}
+	
+	$mode ||= 'live';
+	if ($mode ne 'test' && $mode ne 'live') {
+		$mode = 'test';
+	}
+	
 	$text ||= $self->{'text'};
 	$link ||= $self->{'link'};
-	
-	my $auid = $ENV{'REMOTE_ADDR'};
-	$ENV{'HTTP_X_UP_SUBNO'} and $auid = $ENV{'HTTP_X_UP_SUBNO'} or
-	$ENV{'HTTP_XID'}		and $auid = $ENV{'HTTP_XID'} or
-	$ENV{'HTTP_CLIENTID'}	and $auid = $ENV{'HTTP_CLIENTID'};
 	
 	Carp::croak("cant serve ads without site\n") unless ($site);
 	Carp::croak("cant serve ads without remote user agent\n") unless ($remote);
@@ -136,16 +150,17 @@ sub get_decktrade_ad {
 	
 	# fetch data
 	my $res;
+	#"?cid="&cid&"&ua="&ua&"&ip="&ip&"&mt="&mt&"&request="&req&"" 
 	my $params = {
-					asid	=> $site,
-					ua		=> $remote,
-					auid	=> $auid,
-					uip		=> $address,
-					mode	=> 'test'
+					s		=> $site,
+					b		=> $remote,
+					i		=> $address,
+					l		=> $lang,
+					m		=> $mode
 				};
 		
 	eval q[$res = $self->{'parent'}->get_ad({ 
-											url		=> 'http://ads.decktrade.com/getAd.php5',
+											url		=> 'http://www.adshandy.com/cgi-bin/pm/getad.cgi',
 											method	=> 'GET',
 											params	=> $params
 										});];
@@ -168,60 +183,22 @@ sub parse {
 	
 	my ($toparse,$text,$link) = @_;
 	my $ret = { };
-	
-	if ($toparse =~ m|\<a\s+href=\"([^\"]+)\".*?\<img\s+src=\"([^\"]+)\".*?alt=\"([^\"]+)\"|s) { #"
+	if ($toparse =~ m|\<\s*a href=\"([^\"]+)\".*?img.*?src=\"([^\"]+)\".*?alt=\"([^\"]+)\"|s) {
 		#an ad with both text and image (and link of course)
-		($ret->{'link'},$ret->{'text'},$ret->{'image'})  = ($1,$3,$2);
+		($ret->{'link'},$ret->{'image'},$ret->{'text'}) = ($1,$2,$3);
 	}
-	elsif ($toparse =~ m|\<a\s+href=\"([^\"]+)\".*?\<img\s+src=\"([^\"]+)\"|s) {
-		#an ad with both text and image (and link of course)
-		($ret->{'link'},$ret->{'text'},$ret->{'image'})  = ($1,'Advertisement',$2);
+	elsif ($toparse =~ m|\<\s*a href=\"([^\"]+)\".*?img.*?src=\"([^\"]+)\"|s) {
+		#an ad with only link and image
+		($ret->{'link'},$ret->{'image'},$ret->{'text'}) = ($1,$2,'');
 	}
-	elsif ($toparse =~ m|^<a\s+href=\"([^\"]+)\".*?\>(.+?)\</a\>|s) { #"
-		#an ad with only text and link
-		($ret->{'link'},$ret->{'text'})  = ($1,$2);
+	elsif ($toparse =~ m|\<\s*a href=\"([^\"]+)\".*?\>(.+?)\</a>|s) {
+		#an ad with only link and text
+		($ret->{'link'},$ret->{'image'},$ret->{'text'}) = ($1,'',$2);
 	}
-	
-	if (defined($ret->{'link'})) {
-		my $uri;
-		if ($ret->{'link'} =~ m|\?|) {
-			$ret->{'link'} =~ s|^(.*?\?)||;
-			$uri = $1;
-			while ($ret->{'link'} =~ s|(.+?)\=([^\&]+)\&?||) {
-				my ($key,$val) = ($1,$2);
-				if ($val !~ m|^[a-zA-Z0-9_\-.]+$| && $val !~ m|\%[0-9A-F]{2}|) {
-					$uri .= $key.'='.$self->{'parent'}->URLEncode($val).'&';
-				}
-				else {
-					$uri .= $key.'='.$val.'&';
-				}
-			}
-		}
-		$uri =~ s|\&$||;
-		$ret->{'link'}  = $uri;
-		$ret->{'link'}  = $self->{'parent'}->XMLEncode($ret->{'link'});
-	}
+		
+	defined($ret->{'link'})  and $ret->{'link'}  = $self->{'parent'}->XMLEncode($ret->{'link'});
 	defined($ret->{'text'})  and $ret->{'text'}  = $self->{'parent'}->XMLEncode($ret->{'text'});
-	
-	if (defined($ret->{'image'})) {
-		my $uri;
-		if ($ret->{'image'} =~ m|\?|) {
-			$ret->{'image'} =~ s|^(.*?\?)||;
-			$uri = $1;
-			while ($ret->{'image'} =~ s|(.+?)\=([^\&]+)\&?||) {
-				my ($key,$val) = ($1,$2);
-				if ($val !~ m|^[a-zA-Z0-9_\-.]+$| && $val !~ m|\%[0-9A-F]{2}|) {
-					$uri .= $key.'='.$self->{'parent'}->URLEncode($val).'&';
-				}
-				else {
-					$uri .= $key.'='.$val.'&';
-				}
-			}
-		}
-		$uri =~ s|\&$||;
-		$ret->{'image'}  = $uri;
-		$ret->{'image'}  = $self->{'parent'}->XMLEncode($ret->{'image'});
-	}
+	defined($ret->{'image'}) and $ret->{'image'} = $self->{'parent'}->XMLEncode($ret->{'image'});
 	
 	return $ret;
 }
@@ -232,10 +209,11 @@ sub parse {
 
 =over 4
 
-=item get_Decktrade_ad
+=item get_zestadz_ad
 
 C<>=> Does the actual fetching of the ad for the site given. Refer to new for details
-Returns a list ($text_for_ad,$link_for_ad,$ad_image) value.
+Returns a list ($text_for_ad,$link_for_ad) value in list context or an 
+``<a href="$link">$text</a>'' if called in scalar context.
 
 =back
 
@@ -255,21 +233,13 @@ Returns a list ($text_for_ad,$link_for_ad,$ad_image) value.
  0.0.5
  	All ua stuff put in Mobile::Ads
  0.0.6
- 	Initial Release for Decktrade
+ 	Aliased get_ad to get_zestadz_ad
  0.0.7
- 	Aliased get_ad to get_decktrade_ad
- 0.0.8
  	Option to reuse parent Mobile::Ads instead of creating anew
- 0.0.9
- 	Skipped this to have same verion number in all modules
+ 0.0.8/0.0.9
+ 	Skipped those to have same verion number in all modules
  0.1.0
  	One could also use a reference to the parent... :)
- 0.1.1
- 	Handle image ads without text
- 0.1.2
- 	Handle non URLencoded URIs in link & text
- 0.1.3
- 	Handle non URLencoded URIs CONDITIONALLY
 
 =head1 BUGS
 

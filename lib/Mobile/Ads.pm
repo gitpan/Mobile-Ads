@@ -1,4 +1,4 @@
-# Mobile::Ads.pm version 0.0.2
+# Mobile::Ads.pm version 0.0.4
 #
 # Copyright (c) 2008 Thanos Chatziathanassioy <tchatzi@arx.net>. All rights reserved.
 # This program is free software; you can redistribute it and/or
@@ -12,7 +12,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw();   #&new);
 @EXPORT_OK = qw();
 
-$Mobile::Ads::VERSION='0.0.2';
+$Mobile::Ads::VERSION='0.0.4';
 $Mobile::Ads::ver=$Mobile::Ads::VERSION;
 
 use strict 'vars';
@@ -21,12 +21,13 @@ use diagnostics;
 use Carp();
 use LWP::UserAgent();
 use HTTP::Request::Common();
+use HTTP::Headers();
 
 =head1 NAME
 
 Mobile::Ads - base class for Mobile Ads
 
-Version 0.0.2
+Version 0.0.4
 
 =head1 SYNOPSIS
 
@@ -46,6 +47,7 @@ C<Mobile::Ads::Buzzcity>
 C<Mobile::Ads::Decktrade>
 C<Mobile::Ads::GetMobile>
 C<Mobile::Ads::MoJiva>
+C<Mobile::Ads::RingRingMedia>
 C<Mobile::Ads::ZastAdz>
 
 Refer to their man pages for help (?)
@@ -75,18 +77,26 @@ sub new {
 sub get_ad {
 	my $self = shift;
 	
-	my ($url,$method,$params) = ('','','');
+	my ($url,$method,$params,$headers) = ('','','','');
 	if (ref $_[0] eq 'HASH') {
 		$url	= $_[0]->{'url'};
 		$method = $_[0]->{'method'};
 		$params = $_[0]->{'params'};
+		$headers = $_[0]->{'headers'};
 	}
 	else {
-		($url,$method,$params) = @_;
+		($url,$method,$params,$headers) = @_;
 	}
 	
 	#test $uri is valid...
 	$url =~ m|^https?://| or Carp::croak("Ads.pm get_ad(): invalid URL $url\n");
+	
+	#patch for extra headers is here
+	if ($headers && ref($headers) eq 'HASH') {
+		foreach (keys(%$headers)) {
+			$self->{'ua'}->default_headers->push_header($_ => $headers->{$_});
+		}
+	}
 	
 	my $res;
 	# fetch data
@@ -120,7 +130,7 @@ sub get_ad {
 					}
 					
 					$uri .= $self->URLEncode($_);
-					if ($params->{$_}) {
+					if ($params->{$_} || $params->{$_} == 0) {
 						$uri .= "=".$self->URLEncode($params->{$_});
 					}
 					
@@ -221,6 +231,10 @@ Proably of use to everyone, so put here.
  0.0.2 
 	First CPAN released version and the addition of $self->timeout to easily set
 	LWP::UserAgent timeout
+ 0.0.3 
+	Added option for custom HTTP headers to make Mobile::Ads::GetMobile work
+ 0.0.4 
+	If a param value was 0 it wouldn't be added to the request.
  
 =head1 BUGS
 

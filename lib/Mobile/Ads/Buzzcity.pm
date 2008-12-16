@@ -30,7 +30,7 @@ Version 0.1.0
  use Mobile::Ads::Buzzcity;
  $ad = new Mobile::Ads::Buzzcity
  ($text,$link,$image) = $ad->get_buzzcity_ad({
-				site	=> 'Ads.gr site code',
+				site	=> 'buzzcity site code',
  				remote	=> $ENV{'HTTP_USER_AGENT'},
  				address	=> $ENV{'REMOTE_ADDR'},
  				text	=> 'default ad text',

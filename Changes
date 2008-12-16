@@ -1,4 +1,13 @@
-Revision history for Perl extension Mobile::Messaging::ParlayX.
+Revision history for Perl extension Mobile::Ads.
+
+0.0.4 Tue Dec 16 2008 15:06:23
+	- Fixed a bug in the newly added HTTP Headers
+	- Added HTTP::Headers in Makefile.PL PREREQ_PM
+	- Support for AdsHandy and MkHoj
+
+0.0.3 Fri Nov 14 2008 10:02:50
+	- Mobile::Ads can now add HTTP headers needed by some agencies
+	- Added suppport from Ring Ring Media
 
 0.0.2  Wed Sep 03 17:02:40
 	- first CPAN released version
